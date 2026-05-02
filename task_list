@@ -16,9 +16,13 @@
 - [x] Интеграция с FastAPI
 - [x] Эндпоинты /chat и /chat/messages
 
-## STEP 3: Router
-- [ ] LLM-based classifier (интенты, субагенты)
-- [ ] Контекстная сборка для роутера
+## STEP 3: Router [DONE]
+- [x] LLM-based classifier (интенты, субагенты)
+- [x] Контекстная сборка для роутера
+- [x] ContextBuilder (short-term history)
+- [x] StateTracker (логирование решений, вызовов, инструментов)
+- [x] ExecutionManager (управление выполнением)
+- [x] Интеграция с FastAPI через /chat endpoint
 
 ## STEP 4: Subagents
 - [ ] BaseAgent интерфейс

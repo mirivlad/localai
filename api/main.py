@@ -8,6 +8,7 @@ import os
 
 from models import ModelManager, OpenAICompatibleProvider, ModelResponse
 from config.loader import load_providers_config, get_fallback_chain
+from orchestrator import Router, ContextBuilder, ExecutionManager, StateTracker
 
 app = FastAPI(
     title="Local AI Agent",
@@ -15,13 +16,16 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Инициализация ModelManager
+# Инициализация компонентов
 model_manager = ModelManager()
+execution_manager = None  # Будет инициализирован при старте
 
 
 @app.on_event("startup")
 async def startup_event():
     """Инициализация при запуске"""
+    global execution_manager
+    
     # Загрузка провайдеров из конфигурации
     providers_config = load_providers_config(
         os.getenv('PROVIDERS_CONFIG', 'config/providers.yaml')
@@ -35,6 +39,10 @@ async def startup_event():
     # Установка fallback цепочки
     fallback_chain = get_fallback_chain()
     model_manager.set_fallback_chain(fallback_chain)
+    
+    # Инициализация ExecutionManager
+    execution_manager = ExecutionManager(model_manager)
+    print("System initialized successfully")
 
 
 class ChatRequest(BaseModel):
@@ -78,19 +86,19 @@ async def root():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Основной endpoint для чата"""
+    """Основной endpoint для чата через оркестратор"""
+    global execution_manager
+    
     try:
-        response = await model_manager.generate(
-            prompt=request.content,
-            provider_name=request.model,
-            temperature=request.temperature,
-            max_tokens=request.max_tokens
+        result = await execution_manager.execute(
+            session_id=request.session_id,
+            message=request.content
         )
         return ChatResponse(
-            session_id=request.session_id,
-            text=response.text,
-            model=response.model,
-            usage=response.usage
+            session_id=result["session_id"],
+            text=result["text"],
+            model=result["model"],
+            usage=result["usage"]
         )
     except Exception as e:
         return ChatResponse(
