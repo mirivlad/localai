@@ -14,6 +14,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models import ModelManager, ModelFactory, OpenAICompatibleProvider, ModelResponse
 from config.loader import load_providers_config, get_fallback_chain
 from orchestrator import Router, ContextBuilder, ExecutionManager, StateTracker
+from loguru import logger
+
+# Настройка логирования
+logger.add("logs/app.log", rotation="10 MB", level=os.getenv("LOG_LEVEL", "INFO"))
 
 app = FastAPI(
     title="Local AI Agent",
@@ -35,10 +39,10 @@ async def startup_event():
     env_file = os.path.join(os.path.dirname(__file__), '..', 'config', '.env')
     env_example = os.path.join(os.path.dirname(__file__), '..', 'config', '.env.example')
     if not os.path.exists(env_file) and os.path.exists(env_example):
-        print(f"Creating .env from example...")
+        logger.info(f"Creating .env from example...")
         import shutil
         shutil.copy(env_example, env_file)
-        print(f"Created {env_file}. Please edit it with your API keys!")
+        logger.info(f"Created {env_file}. Please edit it with your API keys!")
     
     # Создание директорий если их нет
     data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
@@ -58,7 +62,7 @@ async def startup_event():
             provider = ModelFactory.create_provider(config)
             model_manager.register_provider(provider)
         except Exception as e:
-            print(f"Failed to create provider {config.get('name', 'unknown')}: {e}")
+            logger.error(f"Failed to create provider {config.get('name', 'unknown')}: {e}")
     
     # Установка fallback цепочки
     fallback_chain = get_fallback_chain()
@@ -66,7 +70,7 @@ async def startup_event():
     
     # Инициализация ExecutionManager
     execution_manager = ExecutionManager(model_manager)
-    print("System initialized successfully")
+    logger.info("System initialized successfully")
 
 
 class ChatRequest(BaseModel):
@@ -163,11 +167,42 @@ async def chat_with_messages(request: ChatMessagesRequest):
 async def chat_stream(request: ChatRequest):
     """Streaming endpoint для чата"""
     async def generate() -> AsyncGenerator[str, None]:
-        # Заглушка - в будущем будет стриминг от модели
-        words = f"Echo: {request.content}".split()
-        for word in words:
-            yield word + " "
-            await asyncio.sleep(0.1)
+        try:
+            messages = [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": request.content}
+            ]
+            
+            # Получаем провайдера и делаем streaming запрос
+            provider = None
+            for p in model_manager.providers.values():
+                if hasattr(p, 'client'):
+                    provider = p
+                    break
+            
+            if provider and hasattr(provider, 'client'):
+                # OpenAI-compatible streaming
+                stream = await provider.client.chat.completions.create(
+                    model=request.model or provider.default_model,
+                    messages=messages,
+                    stream=True,
+                    temperature=request.temperature,
+                    max_tokens=request.max_tokens
+                )
+                
+                async for chunk in stream:
+                    if chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
+            else:
+                # Fallback - обычный ответ
+                result = await execution_manager.execute(
+                    session_id=request.session_id,
+                    message=request.content
+                )
+                yield result["text"]
+                
+        except Exception as e:
+            yield f"Error: {str(e)}"
     
     return StreamingResponse(generate(), media_type="text/plain")
 
@@ -219,16 +254,3 @@ async def health():
 async def get_providers():
     """Получение списка провайдеров"""
     return {"providers": model_manager.get_provider_info()}
-
-
-@app.post("/chat/stream")
-async def chat_stream(request: ChatRequest):
-    """Streaming endpoint для чата"""
-    async def generate() -> AsyncGenerator[str, None]:
-        # Заглушка - в будущем будет стриминг от модели
-        words = f"Echo: {request.content}".split()
-        for word in words:
-            yield word + " "
-            await asyncio.sleep(0.1)
-    
-    return StreamingResponse(generate(), media_type="text/plain")

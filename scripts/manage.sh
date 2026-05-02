@@ -68,8 +68,7 @@ start() {
         --host "$HOST" \
         --port "$PORT" \
         --workers "$WORKERS" \
-        --access-log \
-        > "$ACCESS_LOG" 2> "$ERROR_LOG" &
+        > "$ACCESS_LOG" 2>&1 &
     
     echo $! > "$PID_FILE"
     
