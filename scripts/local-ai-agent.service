@@ -1,0 +1,20 @@
+[Unit]
+Description=Local AI Agent Service
+After=network.target
+
+[Service]
+Type=simple
+User=mirivlad
+Group=mirivlad
+WorkingDirectory=/home/mirivlad/git/LocalAiAgent
+Environment="PATH=/home/mirivlad/git/LocalAiAgent/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/mirivlad/git/LocalAiAgent/venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 1
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/mirivlad/git/LocalAiAgent/logs/access.log
+StandardError=append:/home/mirivlad/git/LocalAiAgent/logs/error.log
+PIDFile=/home/mirivlad/git/LocalAiAgent/logs/app.pid
+
+[Install]
+WantedBy=multi-user.target

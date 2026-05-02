@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/*.log
+logs/*.pid
+!logs/.gitkeep
+
+# Data
+data/
+*.db
+*.faiss
+
+# Environment
+config/.env
+.env
+
+# OS
+.DS_Store
+Thumbs.db
