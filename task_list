@@ -34,11 +34,14 @@
 - [x] AgentFactory для создания агентов
 - [x] Интеграция с ExecutionManager
 
-## STEP 5: Tools
-- [ ] Shell (sandboxed)
-- [ ] Filesystem
-- [ ] HTTP
-- [ ] Browser (playwright)
+## STEP 5: Tools [DONE]
+- [x] BaseTool базовый класс
+- [x] Shell (sandboxed, allowlist команд)
+- [x] Filesystem (read, write, list, delete)
+- [x] HTTP (GET, POST, PUT, DELETE)
+- [x] Browser (playwright - опционально)
+- [x] ToolFactory для создания инструментов
+- [x] Dry-run режим для всех инструментов
 
 ## STEP 6: Memory
 - [ ] Short-term memory
