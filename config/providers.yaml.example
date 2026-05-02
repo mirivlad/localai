@@ -1,0 +1,22 @@
+# Конфигурация провайдеров моделей
+
+providers:
+  - name: "openai"
+    provider: "openai_compatible"
+    base_url: "https://api.openai.com/v1"
+    api_key: "your-openai-key"
+    default_model: "gpt-3.5-turbo"
+
+  - name: "openrouter"
+    provider: "openai_compatible"
+    base_url: "https://openrouter.ai/api/v1"
+    api_key: "your-openrouter-key"
+    default_model: "deepseek/deepseek-chat"
+
+  - name: "local_llm"
+    provider: "openai_compatible"
+    base_url: "http://localhost:8080/v1"
+    api_key: "sk-no-key-required"
+    default_model: "local-model"
+
+fallback_chain: ["local_llm", "openrouter", "openai"]

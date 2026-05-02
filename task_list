@@ -1,0 +1,58 @@
+# Task List - Local AI Agent
+
+## STEP 1: FastAPI base [DONE]
+- [x] Создать структуру проекта
+- [x] Настроить FastAPI с /chat и /voice эндпоинтами
+- [x] Добавить session management и streaming responses
+- [x] Создать скрипт управления (manage.sh)
+- [x] Настроить systemd сервис
+
+## STEP 2: Model Manager + OpenAI-compatible client [DONE]
+- [x] Реализовать базовый класс провайдера (BaseModelProvider)
+- [x] Реализовать OpenAI-compatible клиент
+- [x] Реализовать Model Manager (выбор провайдера, fallback)
+- [x] Добавить поддержку локального llama.cpp
+- [x] Унифицированный ответ (text, usage, model)
+- [x] Интеграция с FastAPI
+- [x] Эндпоинты /chat и /chat/messages
+
+## STEP 3: Router
+- [ ] LLM-based classifier (интенты, субагенты)
+- [ ] Контекстная сборка для роутера
+
+## STEP 4: Subagents
+- [ ] BaseAgent интерфейс
+- [ ] ChatAgent
+- [ ] CodeAgent
+- [ ] OperatorAgent
+- [ ] ResearchAgent
+- [ ] VoiceAgent
+
+## STEP 5: Tools
+- [ ] Shell (sandboxed)
+- [ ] Filesystem
+- [ ] HTTP
+- [ ] Browser (playwright)
+
+## STEP 6: Memory
+- [ ] Short-term memory
+- [ ] FAISS vector store
+- [ ] Локальные эмбеддинги
+
+## STEP 7: Behavioral memory
+- [ ] Скоринг система
+- [ ] Ranking: similarity * 0.7 + score * 0.3
+
+## STEP 8: Execution loop
+- [ ] Multi-step reasoning
+- [ ] Max steps limit
+- [ ] Timeout control
+
+## STEP 9: Voice
+- [ ] STT (Whisper)
+- [ ] TTS (Coqui/Piper)
+
+## STEP 10: Interfaces
+- [ ] Telegram бот
+- [ ] Web UI
+- [ ] CLI
