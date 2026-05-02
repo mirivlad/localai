@@ -1,11 +1,12 @@
-from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, AsyncGenerator, List, Dict, Any
 import asyncio
 import time
 import os
 import sys
+import base64
 
 # Добавление корня проекта в путь
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -172,10 +173,41 @@ async def chat_stream(request: ChatRequest):
 
 
 @app.post("/voice")
-async def voice():
-    """Endpoint для голосовых сообщений"""
-    # Заглушка
-    return {"status": "not implemented"}
+async def voice_endpoint(session_id: str, audio_file: UploadFile = File(...)):
+    """Обработка голосового сообщения через Voice Pipeline"""
+    try:
+        from voice.pipeline import VoicePipeline
+        
+        # Чтение аудио данных
+        audio_data = await audio_file.read()
+        
+        # Создание pipeline и обработка
+        pipeline = VoicePipeline(api_url=f"http://localhost:{os.getenv('API_PORT', '8000')}")
+        result = await pipeline.process_voice(audio_data, session_id)
+        
+        if result["success"]:
+            # Кодирование аудио в base64 для передачи
+            audio_base64 = base64.b64encode(result["audio_response"]).decode('utf-8')
+            
+            return JSONResponse({
+                "session_id": result["session_id"],
+                "input_text": result["input_text"],
+                "response_text": result["response_text"],
+                "audio_base64": audio_base64,
+                "model": result.get("model", "unknown"),
+                "success": True
+            })
+        else:
+            return JSONResponse({
+                "success": False,
+                "error": result.get("error", "Unknown error")
+            }, status_code=500)
+    
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
 
 @app.get("/health")

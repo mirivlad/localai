@@ -60,7 +60,7 @@ class TelegramInterface(BaseInterface):
         await update.message.reply_text("Новая сессия начата!")
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обработка текстового сообщения"""
+        """Обработка текстового и голосового сообщения"""
         user_id = update.effective_user.id
         
         # Получение или создание сессии
@@ -68,23 +68,59 @@ class TelegramInterface(BaseInterface):
             self.user_sessions[user_id] = str(user_id) + "_" + str(update.effective_message.date.timestamp())
         
         session_id = self.user_sessions[user_id]
-        user_message = update.message.text
         
         # Отправка индикатора печати
         await update.message.chat.send_action(action="typing")
         
         try:
-            # Отправка в API
-            message = InterfaceMessage(
-                session_id=session_id,
-                content=user_message,
-                input_type="text"
-            )
-            
-            response = await self.send_to_api(message)
-            text = response.get("text", "Извините, произошла ошибка.")
-            
-            await update.message.reply_text(text)
+            # Проверка на голосовое сообщение
+            if update.message.voice:
+                # Обработка голоса
+                voice_file = await update.message.voice.get_file()
+                
+                # Скачивание аудио
+                import io
+                voice_data = io.BytesIO()
+                await voice_file.download_to_memory(voice_data)
+                voice_data.seek(0)
+                
+                # Отправка в Voice API
+                import httpx
+                async with httpx.AsyncClient() as client:
+                    files = {'audio_file': ('voice.ogg', voice_data, 'audio/ogg')}
+                    data = {'session_id': session_id}
+                    response = await client.post(
+                        f"{self.api_url}/voice",
+                        files=files,
+                        data=data
+                    )
+                    
+                    result = response.json()
+                    
+                    if result.get("success") and result.get("audio_base64"):
+                        # Отправка аудио ответа
+                        import base64
+                        audio_bytes = base64.b64decode(result["audio_base64"])
+                        await update.message.reply_voice(voice=audio_bytes)
+                    else:
+                        # Если голос не сработал, отправляем текст
+                        text = result.get("response_text", result.get("error", "Ошибка"))
+                        await update.message.reply_text(text)
+            else:
+                # Обычное текстовое сообщение
+                user_message = update.message.text
+                
+                # Отправка в API
+                message = InterfaceMessage(
+                    session_id=session_id,
+                    content=user_message,
+                    input_type="text"
+                )
+                
+                response = await self.send_to_api(message)
+                text = response.get("text", "Извините, произошла ошибка.")
+                
+                await update.message.reply_text(text)
             
         except Exception as e:
             logger.error(f"Error handling message: {e}")
