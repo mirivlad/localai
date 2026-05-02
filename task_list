@@ -24,13 +24,15 @@
 - [x] ExecutionManager (управление выполнением)
 - [x] Интеграция с FastAPI через /chat endpoint
 
-## STEP 4: Subagents
-- [ ] BaseAgent интерфейс
-- [ ] ChatAgent
-- [ ] CodeAgent
-- [ ] OperatorAgent
-- [ ] ResearchAgent
-- [ ] VoiceAgent
+## STEP 4: Subagents [DONE]
+- [x] BaseAgent интерфейс (BaseAgent, AgentResult)
+- [x] ChatAgent (диалог, объяснения)
+- [x] CodeAgent (генерация кода, анализ)
+- [x] OperatorAgent (выполнение действий)
+- [x] ResearchAgent (поиск, анализ источников)
+- [x] VoiceAgent (координация STT/TTS)
+- [x] AgentFactory для создания агентов
+- [x] Интеграция с ExecutionManager
 
 ## STEP 5: Tools
 - [ ] Shell (sandboxed)

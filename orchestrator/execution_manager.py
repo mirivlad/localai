@@ -3,6 +3,7 @@ from .router import Router, RouterOutput
 from .context_builder import ContextBuilder
 from .state_tracker import StateTracker
 from models import ModelManager
+from agents.factory import AgentFactory
 
 
 class ExecutionManager:
@@ -16,6 +17,7 @@ class ExecutionManager:
         self.router = Router(model_manager)
         self.context_builder = ContextBuilder()
         self.state_tracker = StateTracker()
+        self.agent_factory = AgentFactory()
     
     async def execute(self, session_id: str, message: str) -> Dict[str, Any]:
         """Выполнение запроса через оркестрацию"""
@@ -34,24 +36,35 @@ class ExecutionManager:
         # 3. Выбор модели на основе предпочтений роутера
         model_name = self._select_model(router_output.model_preference)
         
-        # 4. Выполнение через субагента (пока заглушка - прямой вызов модели)
-        response = await self._execute_with_model(
-            session_id=session_id,
-            context=context,
-            model_name=model_name
+        # 4. Создание и выполнение субагента
+        agent = self.agent_factory.create_agent(
+            agent_type=router_output.subagent,
+            model_manager=self.model_manager
         )
+        
+        self.state_tracker.log_agent_step(
+            session_id=session_id,
+            agent_name=agent.name,
+            step=1,
+            action="start",
+            thought=f"Intent: {router_output.intent}"
+        )
+        
+        agent_result = await agent.run(context)
         
         # 5. Обновление истории
         self.context_builder.add_to_history("user", message)
-        self.context_builder.add_to_history("assistant", response["text"])
+        self.context_builder.add_to_history("assistant", agent_result.text)
         
         return {
             "session_id": session_id,
-            "text": response["text"],
-            "model": response["model"],
-            "usage": response["usage"],
+            "text": agent_result.text,
+            "model": "unknown",  # TODO: получать от агента
+            "usage": {},
             "router": router_output.dict(),
-            "tools_used": router_output.tools
+            "agent": agent_result.agent_name,
+            "tools_used": agent_result.tools_used,
+            "success": agent_result.success
         }
     
     async def _execute_with_model(self, session_id: str, 
