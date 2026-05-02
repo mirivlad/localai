@@ -51,9 +51,16 @@
 - [x] BehavioralMemory (паттерны, скоринг)
 - [x] Система: similarity * 0.7 + score * 0.3
 
-## STEP 7: Behavioral memory
-- [ ] Скоринг система
-- [ ] Ranking: similarity * 0.7 + score * 0.3
+## STEP 7: Behavioral memory [DONE]
+- [x] Скоринг система (BehavioralMemory)
+- [x] Ranking: similarity * 0.7 + score * 0.3
+- [x] Хранение паттернов, обновление usage
+
+## STEP 8: Execution loop [IN PROGRESS]
+- [ ] Multi-step reasoning loop
+- [ ] Max steps limit
+- [ ] Timeout control
+- [ ] Интеграция с BehavioralMemory
 
 ## STEP 8: Execution loop
 - [ ] Multi-step reasoning
