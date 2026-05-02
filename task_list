@@ -43,10 +43,13 @@
 - [x] ToolFactory для создания инструментов
 - [x] Dry-run режим для всех инструментов
 
-## STEP 6: Memory
-- [ ] Short-term memory
-- [ ] FAISS vector store
-- [ ] Локальные эмбеддинги
+## STEP 6: Memory [DONE]
+- [x] ShortTermMemory (последние N сообщений)
+- [x] VectorMemory (FAISS + sentence-transformers)
+- [x] Локальные эмбеддинги (all-MiniLM-L6-v2)
+- [x] Сохранение/загрузка индекса и документов
+- [x] BehavioralMemory (паттерны, скоринг)
+- [x] Система: similarity * 0.7 + score * 0.3
 
 ## STEP 7: Behavioral memory
 - [ ] Скоринг система
