@@ -7,12 +7,14 @@ from .base import BaseTool, ToolResult
 class FilesystemTool(BaseTool):
     """Инструмент для работы с файловой системой"""
     
-    def __init__(self, base_path: str = "/"):
+    def __init__(self, base_path: str = "./sandbox"):
         super().__init__(
             name="filesystem",
-            description="Работа с файлами и директориями"
+            description="Работа с файлами и директориями (sandboxed)"
         )
+        # Создаем sandbox директорию если нет
         self.base_path = Path(base_path).resolve()
+        self.base_path.mkdir(parents=True, exist_ok=True)
         self.dry_run = False
     
     async def execute(self, action: str, path: str, 

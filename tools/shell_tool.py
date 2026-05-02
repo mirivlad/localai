@@ -6,17 +6,23 @@ from .base import BaseTool, ToolResult
 class ShellTool(BaseTool):
     """Инструмент для выполнения shell команд (sandboxed)"""
     
-    # Allowlist разрешенных команд
+    # Allowlist разрешенных команд (ограниченный набор)
     ALLOWLIST = [
         "ls", "pwd", "echo", "cat", "grep", "find", "which",
         "python", "python3", "pip", "node", "npm",
-        "git", "cd", "mkdir", "touch", "rm", "cp", "mv"
+        "git", "mkdir", "touch"
+    ]
+    
+    # Blacklist опасных операций (запрещенные паттерны)
+    BLACKLIST = [
+        "rm -rf /", "rm -rf ~", "rm /", "dd if=", "chmod 777",
+        "sudo", "mkfs", "> /dev/sda", "curl|sh", "wget|sh"
     ]
     
     def __init__(self):
         super().__init__(
             name="shell",
-            description="Выполнение shell команд"
+            description="Выполнение shell команд (limited sandbox)"
         )
         self.dry_run = False
     
@@ -78,9 +84,20 @@ class ShellTool(BaseTool):
             )
     
     def _is_allowed(self, command: str) -> bool:
-        """Проверка команды по allowlist"""
+        """Проверка команды по allowlist и blacklist"""
         cmd_base = command.split()[0].split('/')[-1]  # Получаем имя команды
-        return any(allowed in cmd_base for allowed in self.ALLOWLIST)
+        
+        # Проверка по allowlist
+        if not any(allowed in cmd_base for allowed in self.ALLOWLIST):
+            return False
+        
+        # Проверка по blacklist (опасные паттерны)
+        command_lower = command.lower()
+        for forbidden in self.BLACKLIST:
+            if forbidden.lower() in command_lower:
+                return False
+        
+        return True
     
     def set_dry_run(self, enabled: bool):
         """Включение/выключение dry-run режима"""

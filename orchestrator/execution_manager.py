@@ -83,7 +83,10 @@ class ExecutionManager:
                 router_output=router_output
             )
             
-            # 3. Создание и выполнение субагента
+            # 3. Выбор модели на основе предпочтений роутера
+            model_name = self._select_model(router_output.model_preference)
+            
+            # 4. Создание и выполнение субагента
             agent = self.agent_factory.create_agent(
                 agent_type=router_output.subagent,
                 model_manager=self.model_manager
@@ -94,9 +97,11 @@ class ExecutionManager:
                 agent_name=agent.name,
                 step=step,
                 action="execute",
-                thought=f"Intent: {router_output.intent}, Tools: {router_output.tools}"
+                thought=f"Intent: {router_output.intent}, Tools: {router_output.tools}, Model: {model_name}"
             )
             
+            # Передаем выбранную модель в контекст
+            context["selected_model"] = model_name
             agent_result = await agent.run(context)
             last_result = agent_result
             
@@ -110,9 +115,16 @@ class ExecutionManager:
             
             # 5. Проверка завершения
             if agent_result.success:
-                # Сохранение в behavioral memory
-                if agent_result.success and step == 1:
-                    self.behavioral_memory.add_pattern(original_message, agent_result.text)
+                # Сохранение/обновление в behavioral memory
+                if step == 1:
+                    # Новый паттерн
+                    pattern_id = self.behavioral_memory.add_pattern(original_message, agent_result.text)
+                    self.behavioral_memory.update_usage(pattern_id, success=True)
+                else:
+                    # Обновляем существующие паттерны
+                    for pattern in self.behavioral_memory.search(original_message, limit=1):
+                        if 'id' in pattern:
+                            self.behavioral_memory.update_usage(pattern['id'], success=True)
                 
                 # Обновление истории
                 self.context_builder.add_to_history("user", original_message)
@@ -120,9 +132,20 @@ class ExecutionManager:
                 
                 return agent_result
             
-            # Если не успешно и есть еще шаги, обновляем сообщение
+            else:
+                # Обновление scoring при неудаче
+                for pattern in self.behavioral_memory.search(original_message, limit=1):
+                    if 'id' in pattern:
+                        self.behavioral_memory.update_usage(pattern['id'], success=False)
+            
+            # Если не успешно и есть еще шаги, обновляем сообщение с анализом ошибки
             if step < self.max_steps:
-                message = f"Previous attempt failed: {agent_result.text}. Please analyze and try a different approach."
+                # Анализ причины ошибки для следующего шага
+                error_analysis = f"Previous attempt failed: {agent_result.text}. "
+                if agent_result.tools_used:
+                    error_analysis += f"Tools used: {[t.get('name') for t in agent_result.tools_used]}. "
+                error_analysis += "Please analyze the error and try a different approach."
+                message = error_analysis
         
         # Если все шаги пройдены, возвращаем последний результат
         if last_result:
@@ -197,11 +220,19 @@ class ExecutionManager:
         }
     
     def _select_model(self, preference: str) -> Optional[str]:
-        """Выбор модели на основе предпочтений"""
+        """Выбор модели на основе предпочтений роутера"""
+        # Мапинг предпочтений на конкретных провайдеров
         preference_map = {
-            "local": "local",
+            "local": "local_llm",
             "cloud": "openrouter",
             "cheap": "openrouter",
             "strong": "openai"
         }
-        return preference_map.get(preference)
+        
+        # Проверяем, доступен ли выбранный провайдер
+        provider_name = preference_map.get(preference)
+        if provider_name and self.model_manager.get_provider(provider_name):
+            return provider_name
+        
+        # Fallback - возвращаем None (автоматический выбор)
+        return None

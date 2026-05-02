@@ -48,12 +48,16 @@ class Router:
             
             # Парсинг JSON из ответа
             text = response.text.strip()
-            # Извлекаем JSON если есть лишний текст
+            # Извлечение JSON если есть лишний текст
             json_match = re.search(r'\{.*\}', text, re.DOTALL)
             if json_match:
                 text = json_match.group(0)
             
-            data = json.loads(text)
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse JSON from router: {text[:100]}")
+                return self._fallback_route(message)
             
             return RouterOutput(
                 intent=data.get("intent", "chat"),
@@ -101,5 +105,34 @@ class Router:
                 subagent="chat",
                 tools=[],
                 confidence=0.8,
+                model_preference="local"
+            )
+    
+    def _fallback_route(self, message: str) -> RouterOutput:
+        """Fallback роутинг при неудаче парсинга JSON"""
+        message_lower = message.lower()
+        
+        if any(word in message_lower for word in ["код", "code", "напиши", "write", "функция", "function"]):
+            return RouterOutput(
+                intent="code",
+                subagent="coder",
+                tools=["filesystem", "shell"],
+                confidence=0.6,
+                model_preference="strong"
+            )
+        elif any(word in message_lower for word in ["поиск", "search", "найди", "find", "google"]):
+            return RouterOutput(
+                intent="search",
+                subagent="researcher",
+                tools=["http", "browser"],
+                confidence=0.6,
+                model_preference="cloud"
+            )
+        else:
+            return RouterOutput(
+                intent="chat",
+                subagent="chat",
+                tools=[],
+                confidence=0.7,
                 model_preference="local"
             )

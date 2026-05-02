@@ -65,7 +65,8 @@ class VectorMemory:
             "timestamp": datetime.now().isoformat()
         })
         
-        self._save()
+        # Сохранение отключено (будет batch save)
+        # self._save()
         return doc_id
     
     def search(self, query: str, k: int = 5) -> List[Dict]:
@@ -101,6 +102,10 @@ class VectorMemory:
             import pickle
             with open(doc_path, 'wb') as f:
                 pickle.dump(self.documents, f)
+    
+    def save(self):
+        """Явное сохранение (batch save)"""
+        self._save()
     
     def clear(self):
         """Очистка памяти"""

@@ -33,15 +33,29 @@ class BaseInterface(ABC):
         import httpx
         
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.api_url}/chat",
-                json={
-                    "session_id": message.session_id,
-                    "input_type": message.input_type,
-                    "content": message.content,
-                    "metadata": message.metadata
+            # Определение endpoint в зависимости от типа сообщения
+            if message.input_type == "voice" and message.metadata.get("audio_base64"):
+                # Голосовое сообщение
+                files = {
+                    'audio_file': ('voice.wav', message.metadata["audio_base64"], 'audio/wav')
                 }
-            )
+                data = {'session_id': message.session_id}
+                response = await client.post(
+                    f"{self.api_url}/voice",
+                    files=files,
+                    data=data
+                )
+            else:
+                # Текстовое сообщение
+                response = await client.post(
+                    f"{self.api_url}/chat",
+                    json={
+                        "session_id": message.session_id,
+                        "input_type": message.input_type,
+                        "content": message.content,
+                        "metadata": message.metadata
+                    }
+                )
             return response.json()
     
     async def send_to_api_stream(self, message: InterfaceMessage) -> AsyncGenerator[str, None]:

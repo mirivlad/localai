@@ -21,7 +21,9 @@ class BaseSTT(ABC):
 
 
 class WhisperSTT(BaseSTT):
-    """STT используя локальный Whisper"""
+    """STT используя локальный Whisper (с кэшированием модели)"""
+    
+    _model_cache = {}  # Кэш моделей {model_name: model}
     
     def __init__(self, model_name: str = None, device: str = "cpu", model_path: str = None):
         self.model_name = model_name or os.getenv("WHISPER_MODEL", "base")
@@ -30,17 +32,32 @@ class WhisperSTT(BaseSTT):
         self._model = None
     
     async def _load_model(self):
-        """Ленивая загрузка модели"""
+        """Ленивая загрузка модели с кэшированием"""
         if self._model is None:
             try:
                 import whisper
+                
+                # Кэш по пути или имени
+                cache_key = self.model_path if self.model_path else self.model_name
+                
+                if cache_key in WhisperSTT._model_cache:
+                    logger.info(f"Using cached Whisper model: {cache_key}")
+                    self._model = WhisperSTT._model_cache[cache_key]
+                    return
+                
+                # Загрузка
                 if self.model_path and os.path.exists(self.model_path):
                     logger.info(f"Loading Whisper model from: {self.model_path}")
-                    self._model = whisper.load_model(self.model_path, device=self.device)
+                    model = whisper.load_model(self.model_path, device=self.device)
                 else:
                     logger.info(f"Loading Whisper model: {self.model_name}")
-                    self._model = whisper.load_model(self.model_name, device=self.device)
-                logger.info("Whisper model loaded successfully")
+                    model = whisper.load_model(self.model_name, device=self.device)
+                
+                # Сохранение в кэш
+                WhisperSTT._model_cache[cache_key] = model
+                self._model = model
+                
+                logger.info("Whisper model loaded and cached successfully")
             except Exception as e:
                 logger.error(f"Failed to load Whisper model: {e}")
                 raise

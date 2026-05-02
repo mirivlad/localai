@@ -67,7 +67,7 @@ class WebUIInterface(BaseInterface):
             return {"sessions": list(self.user_sessions.keys())}
     
     def _get_html(self) -> str:
-        """HTML страница для чата"""
+        """HTML страница для чата с поддержкой голоса"""
         return """
 <!DOCTYPE html>
 <html>
@@ -76,7 +76,7 @@ class WebUIInterface(BaseInterface):
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin:0; padding:0; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
                background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
         .header { background: #10a37f; color: white; padding: 15px 20px; 
@@ -95,7 +95,7 @@ class WebUIInterface(BaseInterface):
                            padding: 12px 16px; border-radius: 18px; 
                            border-bottom-left-radius: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .typing-indicator span { display: inline-block; width: 8px; height: 8px; 
-                          background: #999; border-radius: 50%; margin: 0 2px;
+                          background: #999; border-radius: 50%; margin: 0 2px; 
                           animation: typing 1.4s infinite; }
         .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
         .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
@@ -111,6 +111,11 @@ class WebUIInterface(BaseInterface):
                                   font-size: 1em; transition: background 0.3s; }
         .input-container button:hover { background: #0d8c6a; }
         .input-container button:disabled { background: #ccc; cursor: not-allowed; }
+        .voice-btn { background: #ff4081 !important; }
+        .voice-btn:hover { background: #e91e63 !important; }
+        .voice-btn.recording { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); }
+                            50% { transform: scale(1.1); } }
         .model-info { font-size: 0.8em; color: #666; text-align: center; padding: 10px; }
     </style>
 </head>
@@ -126,6 +131,7 @@ class WebUIInterface(BaseInterface):
     
     <div class="input-container">
         <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off" />
+        <button onclick="toggleVoice()" id="voiceButton" class="voice-btn">🎤</button>
         <button onclick="sendMessage()" id="sendButton">Отправить</button>
     </div>
     
@@ -136,7 +142,11 @@ class WebUIInterface(BaseInterface):
         const modelInfo = document.getElementById("model-info");
         const input = document.getElementById("messageInput");
         const sendButton = document.getElementById("sendButton");
+        const voiceButton = document.getElementById("voiceButton");
         let isTyping = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
         
         ws.onopen = function() {
             status.textContent = "Подключено";
@@ -158,6 +168,10 @@ class WebUIInterface(BaseInterface):
                 if (data.model) {
                     modelInfo.textContent = "Model: " + data.model;
                 }
+            } else if (data.type === "audio_response") {
+                // Воспроизведение аудио ответа
+                const audio = new Audio("data:audio/wav;base64," + data.audio_base64);
+                audio.play();
             }
         };
         
@@ -176,6 +190,48 @@ class WebUIInterface(BaseInterface):
             input.focus();
         }
         
+        async function toggleVoice() {
+            if (!isRecording) {
+                // Начать запись
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+                    
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64Audio = reader.result.split(',')[1];
+                            ws.send(JSON.stringify({ 
+                                type: 'voice', 
+                                audio: base64Audio 
+                            }));
+                        };
+                        reader.readAsDataURL(audioBlob);
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+                    
+                    mediaRecorder.start();
+                    isRecording = true;
+                    voiceButton.classList.add('recording');
+                    voiceButton.textContent = '⏹️';
+                } catch (err) {
+                    alert('Ошибка доступа к микрофону: ' + err.message);
+                }
+            } else {
+                // Остановить запись
+                mediaRecorder.stop();
+                isRecording = false;
+                voiceButton.classList.remove('recording');
+                voiceButton.textContent = '🎤';
+            }
+        }
+        
         function addMessage(text, className) {
             const div = document.createElement("div");
             div.className = "message " + className;
@@ -188,6 +244,7 @@ class WebUIInterface(BaseInterface):
             if (document.getElementById("typing")) return;
             isTyping = true;
             sendButton.disabled = true;
+            voiceButton.disabled = true;
             const div = document.createElement("div");
             div.className = "typing-indicator";
             div.id = "typing";
@@ -201,6 +258,7 @@ class WebUIInterface(BaseInterface):
             if (typing) typing.remove();
             isTyping = false;
             sendButton.disabled = false;
+            voiceButton.disabled = false;
         }
         
         input.addEventListener("keypress", function(e) {

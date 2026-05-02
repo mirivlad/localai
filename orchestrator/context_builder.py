@@ -1,24 +1,47 @@
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# Добавление корня проекта в путь
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from memory import VectorMemory
 
 
 class ContextBuilder:
     """Сбор контекста для субагентов"""
     
-    def __init__(self, max_short_term: int = 10):
+    def __init__(self, max_short_term: int = 10, 
+                 vector_memory: Optional[VectorMemory] = None):
         self.max_short_term = max_short_term
         self.short_term_history: List[Dict] = []
+        self.vector_memory = vector_memory or VectorMemory()
     
     def build_context(self, session_id: str, message: str, 
                      router_output: Optional[Any] = None,
                      additional_context: Optional[Dict] = None) -> Dict:
-        """Сборка контекста"""
+        """Сборка контекста с использованием векторной памяти"""
         context = {
             "session_id": session_id,
             "message": message,
             "timestamp": datetime.now().isoformat(),
             "short_term_history": self._get_recent_history(),
         }
+        
+        # Поиск релевантных документов в векторной памяти
+        if self.vector_memory and message:
+            try:
+                relevant_docs = self.vector_memory.search(query=message, k=3)
+                if relevant_docs:
+                    context["relevant_docs"] = [
+                        {
+                            "content": doc.get("content", ""),
+                            "score": doc.get("score", 0.0)
+                        } for doc in relevant_docs
+                    ]
+            except Exception as e:
+                print(f"Vector search error: {e}")
         
         if router_output:
             context["router"] = router_output.dict()
