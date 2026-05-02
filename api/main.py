@@ -5,8 +5,12 @@ from typing import Optional, AsyncGenerator, List, Dict, Any
 import asyncio
 import time
 import os
+import sys
 
-from models import ModelManager, OpenAICompatibleProvider, ModelResponse
+# Добавление корня проекта в путь
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from models import ModelManager, ModelFactory, OpenAICompatibleProvider, ModelResponse
 from config.loader import load_providers_config, get_fallback_chain
 from orchestrator import Router, ContextBuilder, ExecutionManager, StateTracker
 
@@ -26,15 +30,34 @@ async def startup_event():
     """Инициализация при запуске"""
     global execution_manager
     
+    # Создание .env если его нет
+    env_file = os.path.join(os.path.dirname(__file__), '..', 'config', '.env')
+    env_example = os.path.join(os.path.dirname(__file__), '..', 'config', '.env.example')
+    if not os.path.exists(env_file) and os.path.exists(env_example):
+        print(f"Creating .env from example...")
+        import shutil
+        shutil.copy(env_example, env_file)
+        print(f"Created {env_file}. Please edit it with your API keys!")
+    
+    # Создание директорий если их нет
+    data_dir = os.path.join(os.path.dirname(__file__), '..', 'data')
+    os.makedirs(data_dir, exist_ok=True)
+    os.makedirs(os.path.join(data_dir, 'embeddings'), exist_ok=True)
+    os.makedirs(os.path.join(data_dir, 'whisper'), exist_ok=True)
+    os.makedirs(os.path.join(data_dir, 'piper'), exist_ok=True)
+    
     # Загрузка провайдеров из конфигурации
     providers_config = load_providers_config(
         os.getenv('PROVIDERS_CONFIG', 'config/providers.yaml')
     )
     
-    # Регистрация провайдеров
+    # Регистрация провайдеров через фабрику
     for config in providers_config:
-        provider = OpenAICompatibleProvider(config['name'], config)
-        model_manager.register_provider(provider)
+        try:
+            provider = ModelFactory.create_provider(config)
+            model_manager.register_provider(provider)
+        except Exception as e:
+            print(f"Failed to create provider {config.get('name', 'unknown')}: {e}")
     
     # Установка fallback цепочки
     fallback_chain = get_fallback_chain()
