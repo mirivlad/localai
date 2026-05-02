@@ -6,10 +6,13 @@ import numpy as np
 class VectorMemory:
     """Долговременная память на основе FAISS"""
     
-    def __init__(self, index_path: str = "./data/faiss_index",
-                 embedding_model: str = "all-MiniLM-L6-v2"):
-        self.index_path = index_path
-        self.embedding_model_name = embedding_model
+    def __init__(self, index_path: str = None,
+                 embedding_model: str = None,
+                 embedding_model_path: str = None):
+        # Пути по умолчанию из переменных окружения или дефолтные
+        self.index_path = index_path or os.getenv("VECTOR_INDEX_PATH", "./data/faiss_index")
+        self.embedding_model_name = embedding_model or os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+        self.embedding_model_path = embedding_model_path or os.getenv("EMBEDDING_MODEL_PATH", None)
         self.embedding_model = None
         self.index = None
         self.documents: List[Dict] = []
@@ -23,7 +26,13 @@ class VectorMemory:
             
             os.makedirs(os.path.dirname(self.index_path), exist_ok=True)
             
-            self.embedding_model = SentenceTransformer(self.embedding_model_name)
+            # Если указан путь к модели - загружаем оттуда, иначе по имени
+            if self.embedding_model_path and os.path.exists(self.embedding_model_path):
+                print(f"Loading embedding model from: {self.embedding_model_path}")
+                self.embedding_model = SentenceTransformer(self.embedding_model_path)
+            else:
+                print(f"Loading embedding model: {self.embedding_model_name}")
+                self.embedding_model = SentenceTransformer(self.embedding_model_name)
             
             if os.path.exists(self.index_path):
                 self.index = faiss.read_index(self.index_path)

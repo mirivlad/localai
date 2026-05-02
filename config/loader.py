@@ -36,7 +36,7 @@ def load_providers_config(config_path: str = None) -> List[Dict[str, Any]]:
             'default_model': os.getenv('OPENROUTER_DEFAULT_MODEL', 'deepseek/deepseek-chat')
         })
     
-    # Local LLM (llama.cpp)
+    # Local LLM (llama.cpp / LM Studio)
     local_url = os.getenv('LOCAL_LLM_BASE_URL')
     if local_url:
         providers.append({
@@ -47,10 +47,35 @@ def load_providers_config(config_path: str = None) -> List[Dict[str, Any]]:
             'default_model': os.getenv('LOCAL_LLM_DEFAULT_MODEL', 'local-model')
         })
     
+    # GigaChat
+    gigachat_client_id = os.getenv('GIGACHAT_CLIENT_ID')
+    gigachat_client_secret = os.getenv('GIGACHAT_CLIENT_SECRET')
+    if gigachat_client_id and gigachat_client_secret:
+        providers.append({
+            'name': 'gigachat',
+            'provider': 'gigachat',
+            'client_id': gigachat_client_id,
+            'client_secret': gigachat_client_secret,
+            'profile': os.getenv('GIGACHAT_PROFILE', 'default'),
+            'model': os.getenv('GIGACHAT_MODEL', 'GigaChat-Pro')
+        })
+    
+    # YandexGPT
+    yandex_folder_id = os.getenv('YANDEX_FOLDER_ID')
+    yandex_api_key = os.getenv('YANDEX_API_KEY')
+    if yandex_folder_id and yandex_api_key:
+        providers.append({
+            'name': 'yandexgpt',
+            'provider': 'yandexgpt',
+            'folder_id': yandex_folder_id,
+            'api_key': yandex_api_key,
+            'model': os.getenv('YANDEX_GPT_MODEL', 'yandexgpt-lite')
+        })
+    
     return providers
 
 
 def get_fallback_chain() -> List[str]:
     """Получение цепочки fallback из конфигурации"""
-    chain = os.getenv('FALLBACK_CHAIN', 'local_llm,openrouter,openai')
+    chain = os.getenv('FALLBACK_CHAIN', 'local_llm,openrouter,openai,gigachat,yandexgpt')
     return [x.strip() for x in chain.split(',')]

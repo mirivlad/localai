@@ -1,6 +1,8 @@
 from typing import Dict, Any
 from .base import BaseModelProvider
 from .openai_compatible import OpenAICompatibleProvider
+from .gigachat_provider import GigaChatProvider
+from .yandexgpt_provider import YandexGPTProvider
 
 
 class ModelFactory:
@@ -14,6 +16,10 @@ class ModelFactory:
         
         if provider_type == "openai_compatible":
             return OpenAICompatibleProvider(name, config)
+        elif provider_type == "gigachat":
+            return GigaChatProvider(name, config)
+        elif provider_type == "yandexgpt":
+            return YandexGPTProvider(name, config)
         else:
             raise ValueError(f"Unknown provider type: {provider_type}")
     
@@ -22,6 +28,9 @@ class ModelFactory:
         """Создание всех провайдеров из списка конфигураций"""
         providers = {}
         for config in configs:
-            provider = ModelFactory.create_provider(config)
-            providers[provider.name] = provider
+            try:
+                provider = ModelFactory.create_provider(config)
+                providers[provider.name] = provider
+            except Exception as e:
+                print(f"Failed to create provider {config.get('name', 'unknown')}: {e}")
         return providers

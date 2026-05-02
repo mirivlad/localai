@@ -24,9 +24,9 @@ class PiperTTS(BaseTTS):
     """TTS используя Piper (локальный, быстрый)"""
     
     def __init__(self, model_path: Optional[str] = None, 
-                 piper_executable: str = "piper"):
-        self.model_path = model_path
-        self.piper_executable = piper_executable
+                 piper_executable: str = None):
+        self.model_path = model_path or os.getenv("PIPER_MODEL_PATH", None)
+        self.piper_executable = piper_executable or os.getenv("PIPER_EXECUTABLE", "piper")
         self._check_available()
     
     def _check_available(self):
@@ -94,8 +94,9 @@ class PiperTTS(BaseTTS):
 class CoquiTTS(BaseTTS):
     """TTS используя Coqui TTS (локальный)"""
     
-    def __init__(self, model_name: str = "tts_models/ru/tacotron2-DDC"):
-        self.model_name = model_name
+    def __init__(self, model_name: str = None, model_path: str = None):
+        self.model_name = model_name or os.getenv("COQUI_MODEL", "tts_models/ru/tacotron2-DDC")
+        self.model_path = model_path or os.getenv("COQUI_MODEL_PATH", None)
         self._model = None
     
     async def _load_model(self):
@@ -103,8 +104,13 @@ class CoquiTTS(BaseTTS):
         if self._model is None:
             try:
                 from TTS.api import TTS
-                logger.info(f"Loading Coqui TTS model: {self.model_name}")
-                self._model = TTS(model_name=self.model_name)
+                # Если указан путь к модели - загружаем оттуда
+                if self.model_path and os.path.exists(self.model_path):
+                    logger.info(f"Loading Coqui TTS from: {self.model_path}")
+                    self._model = TTS(model_path=self.model_path)
+                else:
+                    logger.info(f"Loading Coqui TTS model: {self.model_name}")
+                    self._model = TTS(model_name=self.model_name)
                 logger.info("Coqui TTS model loaded")
             except Exception as e:
                 logger.error(f"Failed to load Coqui TTS: {e}")

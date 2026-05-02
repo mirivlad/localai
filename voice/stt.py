@@ -23,9 +23,10 @@ class BaseSTT(ABC):
 class WhisperSTT(BaseSTT):
     """STT используя локальный Whisper"""
     
-    def __init__(self, model_name: str = "base", device: str = "cpu"):
-        self.model_name = model_name
+    def __init__(self, model_name: str = None, device: str = "cpu", model_path: str = None):
+        self.model_name = model_name or os.getenv("WHISPER_MODEL", "base")
         self.device = device
+        self.model_path = model_path or os.getenv("WHISPER_MODEL_PATH", None)
         self._model = None
     
     async def _load_model(self):
@@ -33,8 +34,12 @@ class WhisperSTT(BaseSTT):
         if self._model is None:
             try:
                 import whisper
-                logger.info(f"Loading Whisper model: {self.model_name}")
-                self._model = whisper.load_model(self.model_name, device=self.device)
+                if self.model_path and os.path.exists(self.model_path):
+                    logger.info(f"Loading Whisper model from: {self.model_path}")
+                    self._model = whisper.load_model(self.model_path, device=self.device)
+                else:
+                    logger.info(f"Loading Whisper model: {self.model_name}")
+                    self._model = whisper.load_model(self.model_name, device=self.device)
                 logger.info("Whisper model loaded successfully")
             except Exception as e:
                 logger.error(f"Failed to load Whisper model: {e}")
