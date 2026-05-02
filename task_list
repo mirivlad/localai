@@ -56,22 +56,21 @@
 - [x] Ranking: similarity * 0.7 + score * 0.3
 - [x] Хранение паттернов, обновление usage
 
-## STEP 8: Execution loop [IN PROGRESS]
-- [ ] Multi-step reasoning loop
-- [ ] Max steps limit
-- [ ] Timeout control
-- [ ] Интеграция с BehavioralMemory
+## STEP 8: Execution loop [DONE]
+- [x] Multi-step reasoning loop
+- [x] Max steps limit
+- [x] Timeout control
+- [x] Интеграция с BehavioralMemory
 
-## STEP 8: Execution loop
-- [ ] Multi-step reasoning
-- [ ] Max steps limit
-- [ ] Timeout control
+## STEP 9: Interfaces [DONE]
+- [x] Базовый класс BaseInterface
+- [x] CLI интерфейс
+- [x] Telegram бот
+- [x] Web UI (дебаг + управление)
+- [ ] Доработка (Voice input/output в интерфейсах)
 
-## STEP 9: Voice
-- [ ] STT (Whisper)
-- [ ] TTS (Coqui/Piper)
-
-## STEP 10: Interfaces
-- [ ] Telegram бот
-- [ ] Web UI
-- [ ] CLI
+## STEP 10: Voice [DONE]
+- [x] STT (Whisper локальный + API)
+- [x] TTS (Piper + Coqui)
+- [x] Voice Pipeline (audio → text → system → text → audio)
+- [ ] Интеграция Voice в Interfaces
